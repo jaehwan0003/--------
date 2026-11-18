@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>작업 기억력 테스트 - 불빛 순서 기억하기</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🧠 기억력 테스트</h1>
+    </header>
+
+    <!-- 난이도 선택 탭 -->
+    <div class="difficulty-selector">
+      <button class="diff-btn active" data-diff="easy">쉬움 (3×3)</button>
+      <button class="diff-btn" data-diff="normal">보통 (4×4)</button>
+      <button class="diff-btn" data-diff="hard">어려움 (5×5)</button>
+    </div>
+
+    <div class="dashboard">
+      <div class="stat-box">
+        <span class="label">현재 단계</span>
+        <span id="level-display" class="value">0</span>
+      </div>
+      <div class="stat-box">
+        <span class="label">최고 기록</span>
+        <span id="best-display" class="value">0</span>
+      </div>
+    </div>
+
+    <div id="status-message" class="status-message">
+      난이도를 고르고 [게임 시작]을 눌러주세요!
+    </div>
+
+    <!-- 자바스크립트가 난이도에 맞춰 칸을 자동으로 채워줍니다 -->
+    <div id="grid" class="grid"></div>
+
+    <button id="start-btn" class="start-btn">게임 시작</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
