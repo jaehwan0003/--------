@@ -3,41 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>작업 기억력 테스트 - 불빛 순서 기억하기</title>
+  <title>기억력 테스트 - 공간 및 속도 인지 훈련</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🧠 기억력 테스트</h1>
+      <h1>⚡ 기억력 테스트</h1>
+      <p class="subtitle">공간 크기와 점등 속도를 조합해 작업 기억력을 측정하세요</p>
     </header>
 
-    <!-- 난이도 선택 탭 -->
-    <div class="difficulty-selector">
-      <button class="diff-btn active" data-diff="easy">쉬움 (3×3)</button>
-      <button class="diff-btn" data-diff="normal">보통 (4×4)</button>
-      <button class="diff-btn" data-diff="hard">어려움 (5×5)</button>
-    </div>
-
-    <div class="dashboard">
-      <div class="stat-box">
-        <span class="label">현재 단계</span>
-        <span id="level-display" class="value">0</span>
+    <!-- 1단계: 격자 크기 선택 -->
+    <section class="control-panel">
+      <div class="step-box">
+        <span class="step-label">1단계. 격자 크기 선택</span>
+        <div class="grid-buttons" id="grid-selector">
+          <button class="grid-btn active" data-size="3">3×3</button>
+          <button class="grid-btn" data-size="4">4×4</button>
+          <button class="grid-btn" data-size="5">5×5</button>
+          <button class="grid-btn" data-size="6">6×6</button>
+          <button class="grid-btn" data-size="7">7×7</button>
+          <button class="grid-btn" data-size="8">8×8</button>
+        </div>
       </div>
-      <div class="stat-box">
-        <span class="label">최고 기록</span>
-        <span id="best-display" class="value">0</span>
+
+      <!-- 2단계: 속도 난이도 선택 창 (격자 선택 시 활성화/강조) -->
+      <div class="step-box speed-panel" id="speed-panel">
+        <span class="step-label">
+          2단계. <strong id="selected-grid-text">3×3</strong> 모드 속도 난이도 선택
+        </span>
+        <div class="speed-buttons" id="speed-selector">
+          <button class="speed-btn" data-speed="easy">
+            <span class="speed-title">쉬움</span>
+            <span class="speed-desc">느림 (0.8초)</span>
+          </button>
+          <button class="speed-btn active" data-speed="normal">
+            <span class="speed-title">보통</span>
+            <span class="speed-desc">표준 (0.5초)</span>
+          </button>
+          <button class="speed-btn" data-speed="hard">
+            <span class="speed-title">어려움</span>
+            <span class="speed-desc">빠름 (0.28초)</span>
+          </button>
+        </div>
       </div>
+    </section>
+
+    <!-- 상태 및 기록 표시 -->
+    <section class="status-bar">
+      <div class="stat-item">
+        <span class="stat-label">현재 설정</span>
+        <span class="stat-value" id="current-mode-badge">3×3 · 보통</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">라운드</span>
+        <span class="stat-value" id="round-display">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">최고 기록</span>
+        <span class="stat-value highlight" id="best-score-display">0</span>
+      </div>
+    </section>
+
+    <!-- 안내 메시지 -->
+    <div class="message-box" id="message-box">
+      크기와 속도를 선택한 뒤 <strong>게임 시작</strong>을 눌러주세요!
     </div>
 
-    <div id="status-message" class="status-message">
-      난이도를 고르고 [게임 시작]을 눌러주세요!
+    <!-- 동적 게임 보드 (3x3 ~ 8x8) -->
+    <main class="board-wrapper">
+      <div class="game-board" id="game-board"></div>
+    </main>
+
+    <!-- 시작 버튼 -->
+    <div class="action-area">
+      <button id="start-btn" class="primary-btn">게임 시작</button>
     </div>
-
-    <!-- 자바스크립트가 난이도에 맞춰 칸을 자동으로 채워줍니다 -->
-    <div id="grid" class="grid"></div>
-
-    <button id="start-btn" class="start-btn">게임 시작</button>
   </div>
 
   <script src="script.js"></script>

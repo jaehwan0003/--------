@@ -1,208 +1,242 @@
-const grid = document.getElementById('grid');
+// DOM 요소 참조
+const gameBoard = document.getElementById('game-board');
+const gridButtons = document.querySelectorAll('.grid-btn');
+const speedButtons = document.querySelectorAll('.speed-btn');
+const speedPanel = document.getElementById('speed-panel');
+const selectedGridText = document.getElementById('selected-grid-text');
+const currentModeBadge = document.getElementById('current-mode-badge');
+const roundDisplay = document.getElementById('round-display');
+const bestScoreDisplay = document.getElementById('best-score-display');
+const messageBox = document.getElementById('message-box');
 const startBtn = document.getElementById('start-btn');
-const levelDisplay = document.getElementById('level-display');
-const bestDisplay = document.getElementById('best-display');
-const statusMessage = document.getElementById('status-message');
-const diffButtons = document.querySelectorAll('.diff-btn');
 
-// 난이도별 설정값 (격자 줄 수, 불빛 켜지는 시간, 다음 불빛까지 대기 시간)
-const DIFFICULTIES = {
-  easy: { label: '쉬움', cols: 3, lightDuration: 550, gapDuration: 280 },
-  normal: { label: '보통', cols: 4, lightDuration: 380, gapDuration: 200 },
-  hard: { label: '어려움', cols: 5, lightDuration: 240, gapDuration: 130 }
+// 속도 난이도별 파라미터 설정 (점등 시간, 칸 사이 대기 시간)
+const SPEED_CONFIG = {
+  easy: {
+    label: '쉬움',
+    lightOnMs: 650,   // 불빛이 켜져 있는 시간 (ms)
+    gapMs: 250        // 다음 불빛까지의 간격 (ms)
+  },
+  normal: {
+    label: '보통',
+    lightOnMs: 420,
+    gapMs: 180
+  },
+  hard: {
+    label: '어려움',
+    lightOnMs: 220,
+    gapMs: 110
+  }
 };
 
-let currentDiff = 'easy';
-let sequence = [];
-let playerSequence = [];
-let level = 0;
-let canClick = false;
-let gameId = 0;
+// 게임 상태 변수
+let gridSize = 3;            // 3 ~ 8
+let speedKey = 'normal';     // 'easy' | 'normal' | 'hard'
+let sequence = [];           // 정답 패턴 배열
+let playerSequence = [];     // 사용자 입력 배열
+let round = 0;
+let isPlaying = false;
+let isShowingSequence = false;
 
-function getBestScore(diff) {
-  return Number(localStorage.getItem(`memoryBest_${diff}`)) || 0;
-}
+// Web Audio API 사운드 합성기
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-function setBestScore(diff, score) {
-  localStorage.setItem(`memoryBest_${diff}`, score);
-}
-
-// 난이도에 맞춰 3x3, 4x4, 5x5 타일을 동적으로 생성
-function setupBoard(diff) {
-  const config = DIFFICULTIES[diff];
-  grid.style.setProperty('--cols', config.cols);
-  grid.innerHTML = '';
-
-  const totalTiles = config.cols * config.cols;
-  for (let i = 0; i < totalTiles; i++) {
-    const tile = document.createElement('button');
-    tile.className = 'tile';
-    tile.dataset.index = i;
-    grid.appendChild(tile);
-  }
-
-  bestDisplay.textContent = getBestScore(diff);
-}
-
-// Web Audio API로 최대 25개 타일까지 조화로운 음계 효과음 생성
-let audioCtx = null;
-function playTone(index, isError = false) {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
+function playTone(freq, duration = 0.15, type = 'sine') {
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
-
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-
-  // 펜타토닉(5음계) 비율을 활용해 어떤 순서로 눌러도 맑은 화음 느낌 유지
-  const ratios = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3];
-  const octave = Math.floor(index / 5);
-  const noteFreq = 130.81 * Math.pow(2, octave) * ratios[index % 5];
-
-  osc.type = isError ? 'sawtooth' : 'sine';
-  osc.frequency.setValueAtTime(isError ? 130 : noteFreq, audioCtx.currentTime);
-
-  gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (isError ? 0.4 : 0.25));
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
 
   osc.connect(gain);
   gain.connect(audioCtx.destination);
-
   osc.start();
-  osc.stop(audioCtx.currentTime + (isError ? 0.4 : 0.25));
+  osc.stop(audioCtx.currentTime + duration);
 }
 
+// 모드별 최고 기록 키 생성 (예: memory_best_5_hard)
+function getBestScoreKey() {
+  return `memory_best_${gridSize}_${speedKey}`;
+}
+
+function loadBestScore() {
+  const saved = localStorage.getItem(getBestScoreKey());
+  bestScoreDisplay.textContent = saved ? saved : '0';
+}
+
+function saveBestScore(score) {
+  const currentBest = Number(localStorage.getItem(getBestScoreKey()) || 0);
+  if (score > currentBest) {
+    localStorage.setItem(getBestScoreKey(), score);
+    bestScoreDisplay.textContent = score;
+  }
+}
+
+// 현재 선택된 크기와 속도 UI 업데이트
+function updateModeUI() {
+  const speedLabel = SPEED_CONFIG[speedKey].label;
+  selectedGridText.textContent = `${gridSize}×${gridSize}`;
+  currentModeBadge.textContent = `${gridSize}×${gridSize} · ${speedLabel}`;
+  loadBestScore();
+}
+
+// 동적 NxN 보드 생성 (3x3 ~ 8x8)
+function createBoard(size) {
+  gameBoard.innerHTML = '';
+  // 칸 수가 많아질수록 간격(gap)을 자동 축소해 8x8에서도 깨지지 않도록 처리
+  const gapSize = size >= 7 ? 4 : size >= 5 ? 6 : 8;
+  gameBoard.style.gap = `${gapSize}px`;
+  gameBoard.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+  gameBoard.style.gridTemplateRows = `repeat(${size}, 1fr)`;
+
+  const totalTiles = size * size;
+  for (let i = 0; i < totalTiles; i++) {
+    const tile = document.createElement('div');
+    tile.classList.add('tile');
+    tile.dataset.index = i;
+    tile.addEventListener('click', () => handleTileClick(i, tile));
+    gameBoard.appendChild(tile);
+  }
+}
+
+// 1단계: 격자 크기 버튼 클릭 이벤트 (3x3 ~ 8x8)
+gridButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (isPlaying) return;
+    gridButtons.forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    gridSize = Number(btn.dataset.size);
+    createBoard(gridSize);
+    updateModeUI();
+
+    // 2단계 속도 선택 창을 시각적으로 강조해 자연스럽게 속도 선택 유도
+    speedPanel.classList.remove('highlight-pop');
+    void speedPanel.offsetWidth; // 애니메이션 리셋
+    speedPanel.classList.add('highlight-pop');
+
+    messageBox.innerHTML = `<strong>${gridSize}×${gridSize}</strong> 선택됨! 아래에서 <strong>속도 난이도</strong>를 고른 뒤 시작하세요.`;
+  });
+});
+
+// 2단계: 속도 난이도 버튼 클릭 이벤트 (쉬움 / 보통 / 어려움)
+speedButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    if (isPlaying) return;
+    speedButtons.forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    speedKey = btn.dataset.speed;
+    updateModeUI();
+
+    const speedLabel = SPEED_CONFIG[speedKey].label;
+    messageBox.innerHTML = `<strong>${gridSize}×${gridSize} (${speedLabel})</strong> 모드 준비 완료! <strong>게임 시작</strong>을 누르세요.`;
+  });
+});
+
+// 지연 함수
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function lightUpTile(index, duration) {
-  const tiles = grid.querySelectorAll('.tile');
+// 특정 타일 점등 효과
+async function flashTile(index, durationMs) {
+  const tiles = document.querySelectorAll('.tile');
   const tile = tiles[index];
   if (!tile) return;
 
+  // 타일 위치에 따라 다른 음높이 출력 (260Hz ~ 620Hz)
+  const totalTiles = gridSize * gridSize;
+  const freq = 260 + (index / totalTiles) * 360;
+  playTone(freq, durationMs / 1000);
+
   tile.classList.add('active');
-  playTone(index, false);
-  await sleep(duration);
+  await sleep(durationMs);
   tile.classList.remove('active');
 }
 
-// 난이도 버튼 클릭 이벤트
-diffButtons.forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const selectedDiff = btn.dataset.diff;
-    if (selectedDiff === currentDiff && level === 0) return;
+// 다음 라운드 시작 및 패턴 시연
+async function nextRound() {
+  isShowingSequence = true;
+  playerSequence = [];
+  round++;
+  roundDisplay.textContent = round;
 
-    // 진행 중이던 게임 초기화
-    gameId++;
-    canClick = false;
-    sequence = [];
-    playerSequence = [];
-    level = 0;
-    levelDisplay.textContent = 0;
+  const totalTiles = gridSize * gridSize;
+  const randomTile = Math.floor(Math.random() * totalTiles);
+  sequence.push(randomTile);
 
-    diffButtons.forEach((b) => b.classList.remove('active'));
-    btn.classList.add('active');
+  const { lightOnMs, gapMs } = SPEED_CONFIG[speedKey];
+  messageBox.innerHTML = `👀 패턴을 기억하세요! (<strong>${sequence.length}단계</strong> · ${SPEED_CONFIG[speedKey].label} 속도)`;
 
-    currentDiff = selectedDiff;
-    setupBoard(currentDiff);
+  await sleep(500);
 
-    startBtn.textContent = '게임 시작';
-    statusMessage.textContent = `[${DIFFICULTIES[currentDiff].label}] 모드가 선택되었습니다. 시작을 눌러주세요!`;
-    statusMessage.style.color = '#e2e8f0';
-  });
-});
+  for (let i = 0; i < sequence.length; i++) {
+    await flashTile(sequence[i], lightOnMs);
+    await sleep(gapMs);
+  }
+
+  isShowingSequence = false;
+  messageBox.innerHTML = `👆 순서대로 클릭하세요! (<strong>0 / ${sequence.length}</strong>)`;
+}
+
+// 사용자 타일 클릭 처리
+async function handleTileClick(index, tileElement) {
+  if (!isPlaying || isShowingSequence) return;
+
+  const currentStep = playerSequence.length;
+  playerSequence.push(index);
+
+  // 정답 비교
+  if (index === sequence[currentStep]) {
+    const totalTiles = gridSize * gridSize;
+    const freq = 260 + (index / totalTiles) * 360;
+    playTone(freq, 0.14);
+
+    tileElement.classList.add('correct');
+    setTimeout(() => tileElement.classList.remove('correct'), 200);
+
+    messageBox.innerHTML = `👆 순서대로 클릭하세요! (<strong>${playerSequence.length} / ${sequence.length}</strong>)`;
+
+    // 현재 라운드 패턴을 모두 맞혔을 때
+    if (playerSequence.length === sequence.length) {
+      isShowingSequence = true;
+      saveBestScore(round);
+      messageBox.innerHTML = `🎉 <strong>${round}라운드 성공!</strong> 다음 단계로 넘어갑니다...`;
+      await sleep(700);
+      nextRound();
+    }
+  } else {
+    // 오답 처리
+    playTone(140, 0.4, 'sawtooth');
+    tileElement.classList.add('wrong');
+    setTimeout(() => tileElement.classList.remove('wrong'), 500);
+
+    const finalScore = round - 1;
+    saveBestScore(finalScore);
+    isPlaying = false;
+    startBtn.disabled = false;
+    startBtn.textContent = '다시 도전하기';
+
+    messageBox.innerHTML = `❌ <strong>게임 오버!</strong> (${gridSize}×${gridSize} · ${SPEED_CONFIG[speedKey].label} 모드 최종 <strong>${finalScore}라운드</strong> 달성)`;
+  }
+}
 
 // 게임 시작 버튼
 startBtn.addEventListener('click', () => {
-  gameId++;
   sequence = [];
   playerSequence = [];
-  level = 0;
-  startBtn.textContent = '처음부터 다시 시작';
-  nextLevel(gameId);
+  round = 0;
+  isPlaying = true;
+  startBtn.disabled = true;
+  startBtn.textContent = '게임 진행 중...';
+  nextRound();
 });
 
-// 다음 단계 진행
-async function nextLevel(currentGameId) {
-  canClick = false;
-  playerSequence = [];
-  level++;
-  levelDisplay.textContent = level;
-  statusMessage.textContent = '👀 불빛 순서를 잘 기억하세요!';
-  statusMessage.style.color = '#38bdf8';
-
-  const config = DIFFICULTIES[currentDiff];
-  const totalTiles = config.cols * config.cols;
-  const nextTileIndex = Math.floor(Math.random() * totalTiles);
-  sequence.push(nextTileIndex);
-
-  await sleep(550);
-  if (gameId !== currentGameId) return;
-
-  for (let i = 0; i < sequence.length; i++) {
-    if (gameId !== currentGameId) return;
-    await lightUpTile(sequence[i], config.lightDuration);
-    await sleep(config.gapDuration);
-  }
-
-  if (gameId !== currentGameId) return;
-  canClick = true;
-  statusMessage.textContent = '👆 기억한 순서대로 눌러주세요!';
-  statusMessage.style.color = '#4ade80';
-}
-
-// 타일 클릭 처리 (이벤트 위임 방식)
-grid.addEventListener('click', async (e) => {
-  const tile = e.target.closest('.tile');
-  if (!tile || !canClick) return;
-
-  const clickedIndex = Number(tile.dataset.index);
-  playerSequence.push(clickedIndex);
-  const currentStep = playerSequence.length - 1;
-  const config = DIFFICULTIES[currentDiff];
-
-  // 1. 틀린 타일을 눌렀을 경우
-  if (playerSequence[currentStep] !== sequence[currentStep]) {
-    canClick = false;
-    tile.classList.add('wrong');
-    playTone(clickedIndex, true);
-    statusMessage.textContent = `❌ 아쉽습니다! [${config.label}] ${level}단계에서 종료되었습니다.`;
-    statusMessage.style.color = '#f87171';
-    startBtn.textContent = '다시 도전하기';
-
-    setTimeout(() => {
-      tile.classList.remove('wrong');
-    }, 400);
-    return;
-  }
-
-  // 2. 맞는 타일을 눌렀을 경우
-  const clickFlash = Math.min(200, config.lightDuration * 0.6);
-  lightUpTile(clickedIndex, clickFlash);
-
-  // 3. 이번 단계 완료 시
-  if (playerSequence.length === sequence.length) {
-    canClick = false;
-    const currentBest = getBestScore(currentDiff);
-    if (level > currentBest) {
-      setBestScore(currentDiff, level);
-      bestDisplay.textContent = level;
-    }
-
-    statusMessage.textContent = '🎉 정답입니다! 다음 단계로...';
-    statusMessage.style.color = '#facc15';
-
-    const currentGameId = gameId;
-    await sleep(850);
-    if (gameId === currentGameId) {
-      nextLevel(currentGameId);
-    }
-  }
-});
-
-// 초기 화면 3x3 보드 세팅
-setupBoard(currentDiff);
+// 초기 실행
+createBoard(gridSize);
+updateModeUI();
