@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>기억력 테스트 - 공간 및 속도 인지 훈련</title>
+  <title>기억력 테스트 - 인지 반응 속도 및 두뇌 유형 진단</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <header>
       <h1>⚡ 기억력 테스트</h1>
-      <p class="subtitle">공간 크기와 점등 속도를 조합해 작업 기억력을 측정하세요</p>
+      <p class="subtitle">공간 크기 · 점등 속도 · 반응 속도를 종합해 인지 유형을 진단합니다</p>
     </header>
 
     <!-- 1단계: 격자 크기 선택 -->
@@ -27,7 +27,7 @@
         </div>
       </div>
 
-      <!-- 2단계: 속도 난이도 선택 창 (격자 선택 시 활성화/강조) -->
+      <!-- 2단계: 속도 난이도 선택 창 -->
       <div class="step-box speed-panel" id="speed-panel">
         <span class="step-label">
           2단계. <strong id="selected-grid-text">3×3</strong> 모드 속도 난이도 선택
@@ -35,29 +35,33 @@
         <div class="speed-buttons" id="speed-selector">
           <button class="speed-btn" data-speed="easy">
             <span class="speed-title">쉬움</span>
-            <span class="speed-desc">느림 (0.8초)</span>
+            <span class="speed-desc">느림 (0.65초)</span>
           </button>
           <button class="speed-btn active" data-speed="normal">
             <span class="speed-title">보통</span>
-            <span class="speed-desc">표준 (0.5초)</span>
+            <span class="speed-desc">표준 (0.42초)</span>
           </button>
           <button class="speed-btn" data-speed="hard">
             <span class="speed-title">어려움</span>
-            <span class="speed-desc">빠름 (0.28초)</span>
+            <span class="speed-desc">빠름 (0.22초)</span>
           </button>
         </div>
       </div>
     </section>
 
-    <!-- 상태 및 기록 표시 -->
+    <!-- 상태 및 실시간 반응 속도 표시 (4칸 구성) -->
     <section class="status-bar">
       <div class="stat-item">
-        <span class="stat-label">현재 설정</span>
+        <span class="stat-label">모드</span>
         <span class="stat-value" id="current-mode-badge">3×3 · 보통</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">라운드</span>
         <span class="stat-value" id="round-display">0</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">평균 반응속도</span>
+        <span class="stat-value speed-val" id="avg-reaction-display">- ms</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">최고 기록</span>
@@ -79,6 +83,42 @@
     <div class="action-area">
       <button id="start-btn" class="primary-btn">게임 시작</button>
     </div>
+
+    <!-- 게임 종료 후 종합 인지 등급 & 두뇌 유형 진단 리포트 카드 -->
+    <section class="report-card hidden" id="report-card">
+      <div class="report-header">
+        <span class="report-badge">COGNITIVE DIAGNOSIS REPORT</span>
+        <h2>🧠 종합 인지 진단 결과</h2>
+      </div>
+
+      <div class="grade-showcase">
+        <div class="grade-circle" id="report-grade">A</div>
+        <div class="type-info">
+          <span class="type-tag">판정된 두뇌 유형</span>
+          <h3 id="report-brain-type">균형 잡힌 전략가형</h3>
+          <p id="report-type-desc">정확한 공간 기억과 안정적인 반응 속도를 동시에 갖춘 유형입니다.</p>
+        </div>
+      </div>
+
+      <div class="report-metrics">
+        <div class="metric-box">
+          <span class="metric-label">종합 인지 점수</span>
+          <strong class="metric-value accent" id="report-total-score">0점</strong>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">달성 라운드</span>
+          <strong class="metric-value" id="report-round">0단계</strong>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">평균 반응 속도</span>
+          <strong class="metric-value" id="report-avg-ms">0ms</strong>
+        </div>
+        <div class="metric-box">
+          <span class="metric-label">난이도 가중치</span>
+          <strong class="metric-value" id="report-multiplier">×1.0</strong>
+        </div>
+      </div>
+    </section>
   </div>
 
   <script src="script.js"></script>
